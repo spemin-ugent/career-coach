@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Career Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f8fb;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .chat-box {
+      width: 450px;
+      height: 600px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .chat-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    .message {
+      margin: 8px 0;
+      padding: 10px 14px;
+      border-radius: 10px;
+      max-width: 75%;
+      word-wrap: break-word;
+    }
+    .user {
+      background: #0078ff;
+      color: white;
+      align-self: flex-end;
+    }
+    .bot {
+      background: #e8e8e8;
+      color: #333;
+      align-self: flex-start;
+    }
+    .chat-input {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-top: 1px solid #ddd;
+      background: #f9f9f9;
+    }
+    .chat-input input[type="text"] {
+      flex: 1;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      padding: 10px 15px;
+      font-size: 15px;
+      outline: none;
+    }
+    .chat-input input[type="file"] {
+      display: none;
+    }
+    .file-label {
+      margin-left: 8px;
+      cursor: pointer;
+      font-size: 18px;
+      color: #0078ff;
+    }
+    .chat-input button {
+      margin-left: 8px;
+      background: #0078ff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .chat-input button:hover {
+      background: #005fd4;
+    }
+    .options {
+      display: flex;
+      flex-direction: column;
+      margin-top: 10px;
+    }
+    .options button {
+      background: #0078ff;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 4px 0;
+      font-size: 15px;
+    }
+    .options button:hover {
+      background: #005fd4;
+    }
+
+    /* Typing animation */
+    .typing {
+      display: inline-block;
+      position: relative;
+      width: 50px;
+      height: 10px;
+    }
+    .typing span {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #555;
+      border-radius: 50%;
+      animation: typingDots 1.4s infinite;
+    }
+    .typing span:nth-child(1) { left: 0; animation-delay: 0s; }
+    .typing span:nth-child(2) { left: 12px; animation-delay: 0.2s; }
+    .typing span:nth-child(3) { left: 24px; animation-delay: 0.4s; }
+    @keyframes typingDots {
+      0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-box">
+    <div class="chat-content" id="chat-box"></div>
+
+    <form id="chat-form" class="chat-input" enctype="multipart/form-data">
+      <input type="text" name="message" id="message" placeholder="Type your message..." required>
+      <label for="file" class="file-label" title="Attach a file">📎</label>
+      <input type="file" name="file" id="file">
+      <button type="submit">➤</button>
+    </form>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById('chat-box');
+    const form = document.getElementById('chat-form');
+    const msgInput = document.getElementById('message');
+    const fileInput = document.getElementById('file');
+
+    // --- Initial greeting with options ---
+    window.addEventListener('load', () => {
+      const botMsg = document.createElement('div');
+      botMsg.className = 'message bot';
+      botMsg.textContent = "👋 Welcome! I’m your AI career assistant. What would you like to focus on today?";
+      chatBox.appendChild(botMsg);
+
+      const options = document.createElement('div');
+      options.className = 'options';
+      const choices = ["Career Consultation", "Salary Raise", "Job Burnout"];
+      choices.forEach(choice => {
+        const btn = document.createElement('button');
+        btn.textContent = choice;
+        btn.onclick = () => handleOptionClick(choice, options);
+        options.appendChild(btn);
+      });
+      chatBox.appendChild(options);
+    });
+
+    // --- Handle option click ---
+    async function handleOptionClick(choice, optionsDiv) {
+      optionsDiv.remove();
+      appendMessage(choice, 'user');
+
+      const typingDiv = createTypingIndicator();
+      chatBox.appendChild(typingDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      const formData = new FormData();
+      formData.append('message', choice);
+
+      const res = await fetch('/chat', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      typingDiv.remove();
+      appendMessage(data.ai_reply, 'bot');
+    }
+
+    // --- Handle user message ---
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const message = msgInput.value.trim();
+      if (!message) return;
+
+      appendMessage(message, 'user');
+      msgInput.value = '';
+
+      const typingDiv = createTypingIndicator();
+      chatBox.appendChild(typingDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      const formData = new FormData(form);
+      const res = await fetch('/chat', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      typingDiv.remove();
+      appendMessage(data.ai_reply, 'bot');
+      fileInput.value = '';
+    });
+
+    // --- Helper functions ---
+    function appendMessage(text, sender) {
+      const msg = document.createElement('div');
+      msg.className = `message ${sender}`;
+      msg.textContent = text;
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function createTypingIndicator() {
+      const typingDiv = document.createElement('div');
+      typingDiv.className = 'message bot';
+      const typing = document.createElement('div');
+      typing.className = 'typing';
+      typing.innerHTML = '<span></span><span></span><span></span>';
+      typingDiv.appendChild(typing);
+      return typingDiv;
+    }
+  </script>
+</body>
+</html>
